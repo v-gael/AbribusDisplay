@@ -6,8 +6,8 @@ venv: ## Crée le virtualenv et installe les dépendances
 	python3 -m venv .venv
 	.venv/bin/pip install -r requirements.txt
 
-install: venv ## Alias de venv (vérifie que .env existe, voir README pour le créer)
-	[ -f .env ] || { echo "Erreur: .env manquant — créez-le (voir README, section Configuration)."; exit 1; }
+install: venv ## Alias de venv (vérifie que .env existe — il est versionné, voir README)
+	[ -f .env ] || { echo "Erreur: .env manquant (fichier versionné) — voir README, section Configuration."; exit 1; }
 
 ## —— Lancer l'app —————————————————————————————————————————————————————————
 run: ## Lance l'app en local (sans Docker, nécessite venv + .env)

@@ -12,7 +12,8 @@ le lire en premier, ce qui suit ne fait que le compléter côté workflow.
 # Dev local sans Docker
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-# créer .env (valeurs par défaut) et .env.local (surcharges) à la main, voir README
+# .env est versionné (valeurs par défaut), ne pas y toucher : créer .env.local
+# pour renseigner TOKEN, API_URL, etc. (surcharges), voir README
 python -m src.main
 
 # Dev avec Docker (mode fichier, override auto-chargé)
@@ -32,9 +33,11 @@ supposer son existence.
   résultat en générant une image (voir snippet dans `AGENTS.md`) avant de
   conclure — les problèmes de mise en page (chevauchement de texte, colonnes
   trop étroites) ne se voient qu'à l'image, pas à la lecture du code.
-- **Nouvelle variable de config** : l'ajouter dans `Settings` (`src/config.py`)
-  et dans le tableau du `README.md` (`.env` et `.env.local` ne sont pas
-  versionnés, il n'y a pas de fichier d'exemple à maintenir).
+- **Nouvelle variable de config** : l'ajouter dans `Settings` (`src/config.py`),
+  dans le tableau du `README.md`, et dans `.env` avec sa valeur par défaut
+  (`.env` est versionné, c'est lui l'exemple à maintenir). Ne pas mettre de
+  secret dedans (`TOKEN`, `API_URL`, ...) : ça reste réservé à `.env.local`
+  (non versionné, jamais modifié dans `.env`).
 - **Modif touchant les 2 threads** (`src/main.py`, `src/state.py`) : bien
   vérifier qu'on ne réintroduit pas de blocage croisé entre fetch et render,
   et que la règle "on garde les dernières données valides en cas d'erreur"

@@ -12,8 +12,8 @@ rythmes différents, autour d'un état partagé thread-safe :
 ```
                  CALL_RATE (ex: 60s)
    ┌────────────────────────────────────────┐
-   │              Thread fetcher             │
-   │  appelle API_URL → parse JSON → AppState│
+   │             Thread fetcher             │
+   │ appelle API_URL → parse JSON → AppState│
    └────────────────────────────────────────┘
                         │
                         ▼
@@ -21,8 +21,8 @@ rythmes différents, autour d'un état partagé thread-safe :
                         ▲
                         │
    ┌────────────────────────────────────────┐
-   │              Thread renderer            │
-   │  lit AppState → Pillow → PNG → display  │
+   │              Thread renderer           │
+   │  lit AppState → Pillow → PNG → display │
    └────────────────────────────────────────┘
                  REFRESH_RATE (ex: 5s)
 ```
@@ -53,7 +53,7 @@ rythmes différents, autour d'un état partagé thread-safe :
 | Cas | Déclencheur | Rendu |
 |---|---|---|
 | Classique | Réponse OK avec des `nextPassages` | Tableau comme sur la maquette |
-| Vide | `DisplayItem` sans `nextPassages` | Message centré "Pas de passage prévu actuellement", en-tête conservé |
+| Vide | `DisplayItem` sans `nextPassages` | Message centré "Pas de passage prévu actuellement" |
 | Token invalide | Réponse `401` (et jamais eu de données valides) | Message centré "Token invalide, vérifier la configuration" |
 
 La liste `displays` est parcourue en round-robin : toutes les `REFRESH_RATE`
@@ -68,11 +68,12 @@ rétrécissent pour toutes tenir.
 
 ## Configuration (`.env`)
 
-Créer un fichier `.env` à la racine avec les valeurs par défaut / prod
-(ni `.env` ni `.env.local` ne sont versionnés — voir tableau ci-dessous pour
-les variables disponibles). Créer ensuite `.env.local` en phase de dev ou de
-prod pour y ajouter vos surcharges locales (token, URL d'API, etc.), chargé
-en priorité par `src/config.py`.
+`.env` est versionné à la racine du dépôt et contient déjà les valeurs par
+défaut (voir tableau ci-dessous) — ne pas le modifier pour y mettre des
+valeurs propres à votre poste ou votre déploiement. Créer plutôt un fichier
+`.env.local` (non versionné) pour y renseigner `TOKEN`, `API_URL` et toute
+autre surcharge locale (dev ou prod) ; il est chargé en priorité par
+`src/config.py`.
 
 | Variable | Rôle |
 |---|---|
@@ -114,8 +115,9 @@ même sans la police.
 et force `DISPLAY_MODE=file` (pas d'accès `/dev/fb1` nécessaire) :
 
 ```bash
-# créer .env (valeurs par défaut, voir tableau ci-dessus) et .env.local
-# (surcharges dev : API_URL, TOKEN, API_VERIFY_SSL=false si certif auto-signé...)
+# ne pas modifier .env (versionné, valeurs par défaut) : créer .env.local
+# pour vos surcharges dev (API_URL, TOKEN, API_VERIFY_SSL=false si certif
+# auto-signé...), voir tableau ci-dessus
 docker compose up --build
 # ou : make dev
 ```
@@ -133,7 +135,8 @@ Sans Docker :
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-# créer .env (et .env.local si besoin de surcharges), voir tableau ci-dessus
+# créer .env.local si besoin de surcharges (TOKEN, API_URL...), voir tableau
+# ci-dessus — ne pas modifier .env
 python -m src.main
 # ou : make install && make run
 ```
@@ -144,8 +147,9 @@ Sur le Pi, ne pas embarquer `docker-compose.override.yml` (ou le
 supprimer/renommer), pour que `docker-compose.yml` seul s'applique :
 
 ```bash
-# créer .env avec DISPLAY_MODE=fbi, IMAGE_WIDTH/HEIGHT adaptés à l'écran, etc.
-# puis .env.local pour les valeurs spécifiques au déploiement (API_URL, TOKEN)
+# ne pas modifier .env : mettre dans .env.local toutes les valeurs propres à
+# ce déploiement (DISPLAY_MODE=fbi, IMAGE_WIDTH/HEIGHT adaptés à l'écran,
+# API_URL, TOKEN, etc.)
 docker compose up -d --build
 # ou : make pi
 ```
@@ -161,7 +165,7 @@ Raccourcis pour les commandes ci-dessus (`make help` liste les cibles) :
 | Cible | Équivalent |
 |---|---|
 | `make venv` | Crée `.venv` et installe `requirements.txt` |
-| `make install` | `venv` + vérifie que `.env` existe (à créer manuellement, voir Configuration) |
+| `make install` | `venv` + vérifie que `.env` existe (versionné, présent après clone — voir Configuration) |
 | `make run` | `python -m src.main` (nécessite `venv` + `.env`) |
 | `make render-test` | Régénère des aperçus dans `output/` depuis les JSON de `tests/` (vérif visuelle de `renderer.py`, voir `tests/README.md`) |
 | `make dev` | `docker compose up --build` (mode fichier, override auto-chargé) |
@@ -189,8 +193,8 @@ AbribusDisplay/
 │   └── README.md
 ├── output/                # images générées (volume monté), jamais versionné
 ├── debug.html             # prévisualisation navigateur de output/display.png (mode file)
-├── .env                   # non versionné, valeurs par défaut (voir Configuration)
-├── .env.local             # non versionné, surcharges dev/prod (token, etc.)
+├── .env                   # versionné, valeurs par défaut (voir Configuration) — ne pas modifier
+├── .env.local             # non versionné, surcharges dev/prod (TOKEN, API_URL, etc.)
 ├── Dockerfile
 ├── docker-compose.yml            # base, pensé pour le Pi (fbi + /dev/fb1)
 ├── docker-compose.override.yml   # auto-chargé en dev (mode file, pas de fb)

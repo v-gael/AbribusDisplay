@@ -1,4 +1,5 @@
-"""Chargement de la configuration depuis .env puis .env.local (surcharge)."""
+"""Chargement de la configuration depuis .env (versionné, valeurs par défaut)
+puis .env.local (non versionné, surcharge — TOKEN, API_URL, etc.)."""
 from __future__ import annotations
 
 import os
@@ -20,9 +21,9 @@ def _hex_to_rgb(value: str) -> RootColor:
 
 def _load_env_files() -> None:
     root = Path(__file__).resolve().parent.parent
-    # .env : valeurs par défaut / prod
+    # .env : versionné, valeurs par défaut — ne pas y mettre de secret
     load_dotenv(root / ".env", override=False)
-    # .env.local : surcharge locale (dev), non versionné
+    # .env.local : non versionné, surcharge (TOKEN, API_URL, etc.)
     load_dotenv(root / ".env.local", override=True)
 
 

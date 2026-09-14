@@ -34,7 +34,7 @@ sinon les éléments seront sautés.
 
 | Fichier | Rôle |
 |---|---|
-| `src/config.py` | Charge `.env` puis `.env.local` (override). Toute nouvelle variable d'env passe par ici, typée. |
+| `src/config.py` | Charge `.env` (versionné, valeurs par défaut) puis `.env.local` (override, non versionné). Toute nouvelle variable d'env passe par ici, typée. |
 | `src/models.py` | Dataclasses du JSON API (`NextPassagesResponse`, `DisplayItem`, `NextPassage`). |
 | `src/api_client.py` | Appel HTTP. `InvalidTokenError` pour 401, `ApiError` pour le reste. |
 | `src/renderer.py` | Tout le dessin Pillow. Les couleurs/polices viennent de `Settings`, jamais en dur. |
@@ -58,7 +58,8 @@ sinon les éléments seront sautés.
 ## Docker
 
 - `docker-compose.yml` = profil Pi par défaut (accès `/dev/fb1`, `DISPLAY_MODE=fbi`
-  attendu dans `.env`).
+  attendu — à définir dans `.env.local`, pas dans `.env` qui garde `file` par
+  défaut).
 - `docker-compose.override.yml` est **auto-chargé** par `docker compose up`
   et force le mode dev (`DISPLAY_MODE=file`, pas de device framebuffer). Ne
   pas déployer ce fichier sur le Pi.
@@ -93,6 +94,9 @@ Penser à tester les 3 cas : réponse normale, `displays` vide, et
 
 - Ne pas coder en dur `API_URL`, `TOKEN` ou toute couleur — tout passe par
   `.env` / `.env.local` via `Settings`.
+- Ne pas toucher à `.env` (versionné, valeurs par défaut partagées) pour y
+  mettre `TOKEN`, `API_URL` ou toute valeur spécifique à un déploiement —
+  ça va dans `.env.local` (non versionné, chargé en override).
 - Ne pas ajouter de logique de rendu qui suppose que `displays` a toujours
   au moins un élément : `is_empty` et le cas 401 doivent rester gérés.
 - Ne pas bloquer le thread renderer sur un appel réseau : le fetch et le
