@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;background:#000;">
+  <img id="live" style="width:100%;height:100vh;object-fit:contain;">
+  <script>
+    const img = document.getElementById('live');
+    setInterval(() => {
+      img.src = 'output/display.png?' + Date.now();
+    }, 1000);
+  </script>
+</body>
+</html>

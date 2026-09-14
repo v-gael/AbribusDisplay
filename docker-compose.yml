@@ -1,0 +1,15 @@
+services:
+  abribusdisplay:
+    build: .
+    container_name: AbribusDisplay
+    restart: unless-stopped
+    env_file:
+      - .env
+      # Décommenter si vous utilisez un .env.local sur le Pi (surcharges locales)
+      # - .env.local
+    devices:
+      # Accès au framebuffer de l'écran (adapter fb1 si besoin)
+      - "/dev/fb1:/dev/fb1"
+    volumes:
+      - ./output:/app/output
+    # DISPLAY_MODE=fbi doit être défini dans .env pour ce profil

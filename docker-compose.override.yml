@@ -1,0 +1,12 @@
+# Chargé automatiquement par `docker compose up` en plus de docker-compose.yml.
+# Pense à ne PAS déployer ce fichier sur le Pi (ou à le supprimer / renommer là-bas),
+# sinon il annulerait l'accès au framebuffer défini dans docker-compose.yml.
+services:
+  abribusdisplay:
+    devices: !reset []    # pas de /dev/fb1 sur Mac (docker compose merge les listes "devices" par défaut, !reset force le vidage)
+    network_mode: host    # localhost du conteneur = localhost de la VM Docker (Colima), pour joindre l'API en local avec le bon SNI TLS
+    environment:
+      - DISPLAY_MODE=file
+    volumes:
+      - ./output:/app/output
+      - ./.env.local:/app/.env.local:ro

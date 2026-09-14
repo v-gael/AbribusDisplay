@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-09-14T15:26:48+00:00",
+  "displays": [
+    {
+      "label": "Torvilliers Parc d'Activités",
+      "quayName": "Torvilliers Parc d Activites",
+      "nextPassages": [
+        {
+          "routeShortName": "ZI TAD",
+          "routeColor": "A020F0",
+          "routeTextColor": "FFFFFF",
+          "headsign": "ZI CHAPELLE SAINT LUC",
+          "expectedAt": "2026-09-14T15:30:43+00:00"
+        },
+        {
+          "routeShortName": "6A",
+          "routeColor": "009036",
+          "routeTextColor": "FFFFFF",
+          "headsign": "CHAPELLE ST LUC VERS GRANGE L EV. - MESNIL - MACEY",
+          "expectedAt": "2026-09-14T15:30:43+00:00"
+        },
+        {
+          "routeShortName": "10",
+          "routeColor": "C9A791",
+          "routeTextColor": "FFFFFF",
+          "headsign": "TROYES CENTRE > ROSIERES CAMPUS",
+          "expectedAt": "2026-09-14T15:30:43+00:00"
+        },
+        {
+          "routeShortName": "8",
+          "routeColor": "A677AE",
+          "routeTextColor": "FFFFFF",
+          "headsign": "ROSIERES CHARTREUX - TROYES 14 JUILLET",
+          "expectedAt": "2026-09-14T15:30:43+00:00"
+        },
+        {
+          "routeShortName": "2",
+          "routeColor": "E20019",
+          "routeTextColor": "FFFFFF",
+          "headsign": "BUCHERES / ST LEGER - LA CHAPELLE ST LUC",
+          "expectedAt": "2026-09-14T15:30:43+00:00"
+        }
+      ]
+    }
+  ]
+}
