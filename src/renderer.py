@@ -1,54 +1,54 @@
 """Génération de l'image d'affichage avec Pillow, à partir de l'état courant."""
+
 from __future__ import annotations
 
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageDraw, ImageFont
 
 from .config import Settings
-from .models import DisplayItem, NextPassage
 from .state import AppState, Status
 
 logger = logging.getLogger(__name__)
 
 _NO_BUS_ICON_PATH = Path(__file__).resolve().parent.parent / "assets" / "no_bus.png"
+_NO_SIGNAL_ICON_PATH = Path(__file__).resolve().parent.parent / "assets" / "no_signal.png"
+_FONT_PATH = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "RobotoCondensed-Bold.ttf"
 
-_font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
-_no_bus_icon_cache: dict[int, Optional[Image.Image]] = {}
+_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
+_no_bus_icon_cache: dict[int, Image.Image | None] = {}
+_no_signal_icon_cache: dict[int, Image.Image | None] = {}
 
 
-def _get_no_bus_icon(size: int) -> Optional[Image.Image]:
-    if size not in _no_bus_icon_cache:
+def _load_icon(path: Path, size: int, cache: dict[int, Image.Image | None]) -> Image.Image | None:
+    if size not in cache:
         try:
-            icon = Image.open(_NO_BUS_ICON_PATH).convert("RGBA")
-            _no_bus_icon_cache[size] = icon.resize((size, size), Image.LANCZOS)
+            icon = Image.open(path).convert("RGBA")
+            cache[size] = icon.resize((size, size), Image.Resampling.LANCZOS)
         except OSError:
-            logger.warning(
-                "Icône introuvable à %s, affichage du texte seul.", _NO_BUS_ICON_PATH
-            )
-            _no_bus_icon_cache[size] = None
-    return _no_bus_icon_cache[size]
+            logger.warning("Icône introuvable à %s, affichage sans icône.", path)
+            cache[size] = None
+    return cache[size]
 
 
-def _get_font(font_path: str, size: int) -> ImageFont.FreeTypeFont:
-    key = (font_path, size)
-    if key not in _font_cache:
-        try:
-            _font_cache[key] = ImageFont.truetype(font_path, size)
-        except OSError:
-            logger.warning(
-                "Police introuvable à %s, utilisation de la police par défaut. "
-                "Placez Roboto Condensed Bold à cet emplacement pour un rendu fidèle.",
-                font_path,
-            )
-            _font_cache[key] = ImageFont.load_default(size=size)
-    return _font_cache[key]
+def _get_no_bus_icon(size: int) -> Image.Image | None:
+    return _load_icon(_NO_BUS_ICON_PATH, size, _no_bus_icon_cache)
 
 
-def _hex_to_rgb(value: Optional[str], fallback: tuple[int, int, int]) -> tuple[int, int, int]:
+def _get_no_signal_icon(size: int) -> Image.Image | None:
+    return _load_icon(_NO_SIGNAL_ICON_PATH, size, _no_signal_icon_cache)
+
+
+def _get_font(size: int) -> ImageFont.FreeTypeFont:
+    if size not in _font_cache:
+        _font_cache[size] = ImageFont.truetype(str(_FONT_PATH), size)
+    return _font_cache[size]
+
+
+def _hex_to_rgb(value: str | None, fallback: tuple[int, int, int]) -> tuple[int, int, int]:
     if not value:
         return fallback
     value = value.strip().lstrip("#")
@@ -60,7 +60,7 @@ def _hex_to_rgb(value: Optional[str], fallback: tuple[int, int, int]) -> tuple[i
         return fallback
 
 
-def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont) -> tuple[int, int]:
+def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont) -> tuple[float, float]:
     left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
     return right - left, bottom - top
 
@@ -84,13 +84,13 @@ def _draw_smooth_rounded_rect(
         radius=radius * supersample,
         fill=(*fill, 255),
     )
-    mask = mask.resize((w, h), Image.LANCZOS)
+    mask = mask.resize((w, h), Image.Resampling.LANCZOS)
     image.paste(mask, (round(x0), round(y0)), mask)
 
 
 def _draw_centered_text(
     draw: ImageDraw.ImageDraw,
-    box: tuple[int, int, int, int],
+    box: tuple[float, float, float, float],
     text: str,
     font: ImageFont.FreeTypeFont,
     color: tuple[int, int, int],
@@ -105,8 +105,20 @@ def _draw_centered_text(
     draw.text((cx, cy), text, font=font, fill=color, anchor="mm")
 
 
-def render(state: AppState, settings: Settings, now: Optional[datetime] = None) -> Image.Image:
-    now = now or datetime.now().astimezone()
+def _display_timezone(name: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        logger.warning("Fuseau horaire DISPLAY_TIMEZONE=%r introuvable, repli sur UTC", name)
+        return ZoneInfo("UTC")
+
+
+def render(state: AppState, settings: Settings, now: datetime | None = None) -> Image.Image:
+    # datetime.now().astimezone() dépend du fuseau système : sur le conteneur
+    # Docker (souvent en UTC par défaut), l'heure affichée serait fausse.
+    # On force donc le fuseau configuré (DISPLAY_TIMEZONE) plutôt que de
+    # supposer que l'hôte est correctement configuré.
+    now = now or datetime.now(_display_timezone(settings.display_timezone))
     width, height = settings.image_width, settings.image_height
 
     image = Image.new("RGB", (width, height), settings.background_color)
@@ -119,13 +131,14 @@ def render(state: AppState, settings: Settings, now: Optional[datetime] = None) 
 
     display_item = state.next_display()
     status = state.snapshot_status()
+    has_api_error = state.snapshot_has_api_error()
 
     quay_name = display_item.quay_name if display_item else ""
 
     # --- Barre du haut : nom d'arrêt + heure ---
     draw.rectangle((0, 0, width, top_bar_h), fill=settings.background_color)
-    title_font = _get_font(settings.font_path, int(top_bar_h * 0.55))
-    hour_font = _get_font(settings.font_path, int(top_bar_h * 0.55))
+    title_font = _get_font(int(top_bar_h * 0.55))
+    hour_font = _get_font(int(top_bar_h * 0.55))
 
     padding = int(width * 0.03)
     draw.text(
@@ -147,29 +160,56 @@ def render(state: AppState, settings: Settings, now: Optional[datetime] = None) 
 
     # --- Barre des en-têtes de colonnes ---
     draw.rectangle((0, top_bar_h, width, rows_top), fill=settings.header_background_color)
-    header_font = _get_font(settings.font_path, int(col_header_h * 0.62))
+    header_font = _get_font(int(col_header_h * 0.62))
 
     col_route_x = padding
     col_minutes_x = int(width * 0.227)
     col_direction_x = int(width * 0.39)
 
-    draw.text((col_route_x, top_bar_h + col_header_h / 2), "N° ligne", font=header_font,
-               fill=settings.text_header_color, anchor="lm")
-    draw.text((col_minutes_x, top_bar_h + col_header_h / 2), "Dans", font=header_font,
-               fill=settings.text_header_color, anchor="lm")
-    draw.text((col_direction_x, top_bar_h + col_header_h / 2), "Direction", font=header_font,
-               fill=settings.text_header_color, anchor="lm")
+    draw.text(
+        (col_route_x, top_bar_h + col_header_h / 2),
+        "N° ligne",
+        font=header_font,
+        fill=settings.text_header_color,
+        anchor="lm",
+    )
+    draw.text(
+        (col_minutes_x, top_bar_h + col_header_h / 2),
+        "Dans",
+        font=header_font,
+        fill=settings.text_header_color,
+        anchor="lm",
+    )
+    draw.text(
+        (col_direction_x, top_bar_h + col_header_h / 2),
+        "Direction",
+        font=header_font,
+        fill=settings.text_header_color,
+        anchor="lm",
+    )
+
+    # Pictogramme de souci d'accès à l'API (token invalide ou API injoignable),
+    # même écart au bord droit que l'heure, pour signaler le problème sans
+    # jamais remplacer les données valides encore affichées (voir AppState).
+    if has_api_error:
+        icon_size = int(col_header_h * 0.68)
+        icon = _get_no_signal_icon(icon_size)
+        if icon is not None:
+            icon_x = width - padding - icon_size
+            icon_y = int(top_bar_h + col_header_h / 2 - icon_size / 2)
+            image.paste(icon, (icon_x, icon_y), icon)
 
     # --- Corps du tableau ---
-    body_box = (0, rows_top, width, height)
-
     if status is not Status.OK or display_item is None:
-        message = (
-            "Token invalide, vérifier la configuration"
-            if status is Status.INVALID_TOKEN
-            else "Pas de passage prévu actuellement"
-        )
-        msg_font = _get_font(settings.font_path, int(height * 0.055))
+        # Status.ERROR : API injoignable sans données valides reçues, à ne pas
+        # confondre avec une vraie absence de passage (displays vide, OK).
+        if status is Status.INVALID_TOKEN:
+            message = "Token invalide, vérifier la configuration"
+        elif status is Status.ERROR:
+            message = "Données indisponibles"
+        else:
+            message = "Pas de passage prévu actuellement"
+        msg_font = _get_font(int(height * 0.055))
         # texte multi-lignes centré si trop large
         max_w = int(width * 0.85)
         words = message.split(" ")
@@ -200,8 +240,12 @@ def render(state: AppState, settings: Settings, now: Optional[datetime] = None) 
             )
         return image
 
-    if display_item.is_empty:
-        msg_font = _get_font(settings.font_path, int(height * 0.055))
+    # On n'affiche pas les passages déjà passés (expected_at < now) : l'API
+    # peut renvoyer un passage tout juste dépassé entre deux appels.
+    passages = [p for p in display_item.next_passages if p.expected_at >= now]
+
+    if not passages:
+        msg_font = _get_font(int(height * 0.055))
         body_h = height - rows_top
         # Proportions mesurées sur la maquette test/no_bus.png : le bloc
         # icône + texte n'est pas centré verticalement dans le corps, il est
@@ -225,16 +269,15 @@ def render(state: AppState, settings: Settings, now: Optional[datetime] = None) 
         )
         return image
 
-    passages = display_item.next_passages
     # La hauteur de ligne (et donc la taille des polices/pastilles) se base sur
     # ROWS_PER_SCREEN plutôt que sur le nombre réel de passages : avec peu de
     # passages, les lignes gardent une taille normale (l'espace restant reste
     # vide) au lieu de s'étirer démesurément sur toute la hauteur.
     effective_rows = max(len(passages), settings.rows_per_screen)
     row_h = (height - rows_top) / effective_rows
-    route_font = _get_font(settings.font_path, int(row_h * 0.333))
-    minutes_font = _get_font(settings.font_path, int(row_h * 0.396))
-    direction_font = _get_font(settings.font_path, int(row_h * 0.333))
+    route_font = _get_font(int(row_h * 0.333))
+    minutes_font = _get_font(int(row_h * 0.396))
+    direction_font = _get_font(int(row_h * 0.333))
 
     for i, passage in enumerate(passages):
         row_top = rows_top + i * row_h
@@ -269,14 +312,17 @@ def render(state: AppState, settings: Settings, now: Optional[datetime] = None) 
         minutes = passage.minutes_until(now)
         minutes_text = f"{minutes} min"
         draw.text(
-            (col_minutes_x, row_center), minutes_text, font=minutes_font,
-            fill=settings.text_minutes_color, anchor="lm",
+            (col_minutes_x, row_center),
+            minutes_text,
+            font=minutes_font,
+            fill=settings.text_minutes_color,
+            anchor="lm",
         )
 
         # Direction (retour à la ligne si trop long)
         max_w = width - col_direction_x - padding
         words = passage.headsign.split(" ")
-        lines: list[str] = []
+        lines = []
         current = ""
         for word in words:
             trial = f"{current} {word}".strip()
@@ -296,7 +342,10 @@ def render(state: AppState, settings: Settings, now: Optional[datetime] = None) 
         for j, line in enumerate(lines):
             draw.text(
                 (col_direction_x, block_top + j * line_h + line_h / 2),
-                line, font=direction_font, fill=settings.text_direction_color, anchor="lm",
+                line,
+                font=direction_font,
+                fill=settings.text_direction_color,
+                anchor="lm",
             )
 
     return image
