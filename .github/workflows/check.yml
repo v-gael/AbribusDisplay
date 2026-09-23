@@ -1,0 +1,21 @@
+# Lance `make check` (ruff lint + format-check + mypy strict) à chaque push et
+# sur les pull requests vers develop/main. Python 3.11, comme l'image Docker
+# (voir Dockerfile), pour vérifier le code dans la version qui tourne sur le Pi.
+name: check
+
+on:
+  push:
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: make check

@@ -1,5 +1,8 @@
 # AbribusDisplay
 
+[![check](https://github.com/v-gael/AbribusDisplay/actions/workflows/check.yml/badge.svg)](https://github.com/v-gael/AbribusDisplay/actions/workflows/check.yml)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+
 Générateur d'affichage "prochains passages" (type panneau d'arrêt de bus) pour
 Raspberry Pi 3B+, affiché sur écran via `fbi` (`/dev/fb1`), avec un mode fichier
 pour développer sur Mac/Linux sans matériel.
@@ -195,8 +198,11 @@ La police **Roboto Condensed Bold** est embarquée dans le dépôt sous
 `assets/fonts/` (voir `assets/fonts/README.md` pour la licence, SIL Open
 Font License 1.1).
 
-Les icônes `assets/no_bus.png` et `assets/no_signal.png` ont été générées
-par IA pour ce projet.
+Les icônes ont été générées par IA pour ce projet : `assets/no_bus.png` avec
+ChatGPT (OpenAI), `assets/no_signal.png` avec Claude (Anthropic). Les
+conditions d'utilisation des deux services cèdent à l'utilisateur les droits
+sur les contenus générés : elles sont distribuées sous la même licence que le
+code (MIT).
 
 Les noms d'arrêts, lignes et couleurs utilisés dans les exemples
 (`tests/*.json`, `docs/demo.json`, images associées) proviennent des
@@ -366,8 +372,10 @@ make check       # lint + format-check + typecheck
 make format      # reformate le code si besoin
 ```
 
-Aucune CI n'exécute `make check` pour l'instant (voir "Pistes d'évolution") :
-à lancer manuellement avant de committer.
+La CI GitHub Actions (`.github/workflows/check.yml`) lance `make check` sous
+Python 3.11 (version de l'image Docker) à chaque push et sur les pull
+requests vers `develop`/`main`. Le lancer quand même en local avant de
+committer évite un aller-retour.
 
 ## Arborescence
 
@@ -412,4 +420,9 @@ AbribusDisplay/
 - Endpoint de healthcheck (petit serveur HTTP minimal) pour supervision.
 - Tests unitaires sur `renderer.py` (comparaison de pixels) et `models.py`.
 - Rotation/anti-burn-in si l'écran reste allumé 24/7.
-- CI (GitHub Actions ou autre) pour lancer `make check` automatiquement.
+
+## Licence
+
+Code sous licence [MIT](LICENSE). La police Roboto Condensed garde sa propre
+licence (SIL Open Font License 1.1, voir `assets/fonts/`) et les données
+d'exemple TCAT la leur (ODbL, voir "Police, icônes et données").
