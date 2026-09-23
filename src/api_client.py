@@ -1,4 +1,5 @@
 """Appel de l'API distante et gestion des erreurs."""
+
 from __future__ import annotations
 
 import logging
