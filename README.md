@@ -4,6 +4,13 @@ Générateur d'affichage "prochains passages" (type panneau d'arrêt de bus) pou
 Raspberry Pi 3B+, affiché sur écran via `fbi` (`/dev/fb1`), avec un mode fichier
 pour développer sur Mac/Linux sans matériel.
 
+<p align="center">
+  <img src="docs/demo.gif" alt="Aperçu du panneau : deux arrêts avec leurs prochains passages, puis un arrêt sans passage prévu" width="480">
+</p>
+
+<sub>Aperçu généré avec le rendu réel depuis `docs/demo.json` (`make demo-gif`) :
+l'écran passe d'un arrêt à l'autre toutes les `REFRESH_RATE` secondes.</sub>
+
 ## Architecture
 
 Deux boucles tournent en parallèle dans le même processus (threads), à des
@@ -77,6 +84,77 @@ avec moins de passages que `ROWS_PER_SCREEN`, l'espace restant reste vide en
 bas plutôt que de faire grossir les lignes affichées ; avec plus, elles
 rétrécissent pour toutes tenir.
 
+## Contrat d'API
+
+AbribusDisplay n'embarque pas de source de données : il interroge une API
+HTTP (`API_URL`) qui lui renvoie les prochains passages déjà calculés. Le
+backend utilisé par l'auteur (API Platform) n'est **pas encore public** —
+en attendant, n'importe quelle API qui respecte le contrat ci-dessous
+fonctionne (un simple fichier JSON statique servi en HTTP suffit pour
+essayer).
+
+### Requête
+
+```http
+GET {API_URL}
+Accept: application/ld+json
+X-Device-Token: {TOKEN}
+```
+
+- Le header `X-Device-Token` n'est envoyé que si `TOKEN` est renseigné.
+- Appel toutes les `CALL_RATE` secondes, timeout de 10 s.
+
+### Réponses
+
+| Réponse | Comportement |
+|---|---|
+| `2xx` avec un JSON valide (voir ci-dessous) | Données affichées |
+| `401` | Écran "Token invalide" (ou pictogramme seul si des données valides sont déjà affichées) |
+| Autre code HTTP, erreur réseau, JSON invalide ou champ obligatoire manquant | Écran "Données indisponibles" (même règle) |
+
+### Format du JSON
+
+```json
+{
+  "generatedAt": "2026-09-14T15:26:48+00:00",
+  "displays": [
+    {
+      "label": "Torvilliers Parc d'Activités",
+      "quayName": "Torvilliers Parc d Activites",
+      "nextPassages": [
+        {
+          "routeShortName": "6A",
+          "routeColor": "009036",
+          "routeTextColor": "FFFFFF",
+          "headsign": "CHAPELLE ST LUC VERS GRANGE L EV. - MESNIL - MACEY",
+          "expectedAt": "2026-09-14T15:30:43+00:00"
+        }
+      ]
+    }
+  ]
+}
+```
+
+| Champ | Type | Obligatoire | Rôle |
+|---|---|---|---|
+| `generatedAt` | date ISO 8601 avec fuseau | oui | Date de génération de la réponse |
+| `displays` | tableau | non (défaut `[]`) | Un élément par arrêt, affichés tour à tour (round-robin) ; vide → "Pas de passage prévu actuellement" |
+| `displays[].quayName` | chaîne | non | Nom d'arrêt affiché dans le bandeau du haut (mis en majuscules) |
+| `displays[].label` | chaîne | non | Libellé lisible de l'arrêt (lu mais pas affiché pour l'instant) |
+| `displays[].nextPassages` | tableau | non (défaut `[]`) | Passages, affichés **dans l'ordre reçu** (à trier côté API) ; vide → "Pas de passage prévu actuellement" |
+| `nextPassages[].routeShortName` | chaîne | oui | Numéro/nom court de ligne (pastille) |
+| `nextPassages[].routeColor` | hex sans `#` | non | Fond de la pastille (défaut : `HEADER_BACKGROUND_COLOR`) |
+| `nextPassages[].routeTextColor` | hex sans `#` | non | Texte de la pastille (défaut : `TEXT_DIRECTION_COLOR`) |
+| `nextPassages[].headsign` | chaîne | oui | Direction |
+| `nextPassages[].expectedAt` | date ISO 8601 avec fuseau | oui | Heure de passage prévue |
+
+Le "Dans X min" est calculé par l'afficheur à chaque rendu (`expectedAt` −
+heure courante, arrondi à la minute inférieure, jamais négatif) : l'API n'a
+pas besoin d'être rappelée pour que le décompte avance entre deux appels.
+
+Des exemples complets sont dans `tests/*.json` et `docs/demo.json`. Le
+parsing est dans `src/models.py`.
+
 ## Configuration (`.env`)
 
 `.env` est versionné à la racine du dépôt et contient déjà les valeurs par
@@ -111,11 +189,20 @@ autre surcharge locale (dev ou prod) ; il est chargé en priorité par
 > retombe respectivement sur `HEADER_BACKGROUND_COLOR` et
 > `TEXT_DIRECTION_COLOR`.
 
-### Police
+### Police, icônes et données
 
 La police **Roboto Condensed Bold** est embarquée dans le dépôt sous
 `assets/fonts/` (voir `assets/fonts/README.md` pour la licence, SIL Open
 Font License 1.1).
+
+Les icônes `assets/no_bus.png` et `assets/no_signal.png` ont été générées
+par IA pour ce projet.
+
+Les noms d'arrêts, lignes et couleurs utilisés dans les exemples
+(`tests/*.json`, `docs/demo.json`, images associées) proviennent des
+données ouvertes du réseau TCAT (Troyes Champagne Métropole), publiées sur
+[transport.data.gouv.fr](https://transport.data.gouv.fr/datasets/donnees-tcat-troyes-champagne-metropole-1)
+sous licence [ODbL](https://opendatacommons.org/licenses/odbl/1.0/).
 
 ## Lancer en développement (Mac/Linux, sans Pi)
 
@@ -158,8 +245,8 @@ déploiement. `setup-ecran-pi.sh` configure l'écran SPI 3.5" (clone
 waveshare35a) et installe Docker :
 
 ```bash
-scp setup-ecran-pi.sh admin@192.168.1.131:~   # depuis le Mac
-ssh admin@192.168.1.131
+scp setup-ecran-pi.sh admin@<IP_DU_PI>:~   # depuis le Mac
+ssh admin@<IP_DU_PI>
 sudo ./setup-ecran-pi.sh
 ```
 
@@ -203,7 +290,10 @@ chaque rebuild :
 cp .env.pi.local.example .env.pi.local   # une seule fois, puis compléter
 # DISPLAY_MODE=fbi, TOKEN, API_URL, IMAGE_WIDTH/IMAGE_HEIGHT selon l'écran...
 
-make deploy PI_HOST=192.168.1.131 PI_USER=admin
+cp deploy.local.mk.example deploy.local.mk   # une seule fois, puis y mettre PI_HOST=<IP_DU_PI>
+
+make deploy
+# (ou, sans deploy.local.mk : make deploy PI_HOST=<IP_DU_PI> PI_USER=admin)
 # build l'image en local (nécessite un Mac/hôte de même archi que le Pi,
 # ex. Apple Silicon -> Pi 64-bit, sinon voir docker buildx --platform),
 # la transfère par SSH (docker save | ssh ... docker load, sans fichier
@@ -217,8 +307,10 @@ make deploy PI_HOST=192.168.1.131 PI_USER=admin
 Mac, `make deploy` se charge de le pousser sur le Pi à chaque déploiement —
 pas besoin de s'y connecter en SSH pour ça.
 
-`PI_HOST`/`PI_USER`/`PI_DIR` ont des valeurs par défaut dans le `Makefile` à
-adapter à ton installation.
+`PI_HOST` n'a pas de valeur par défaut : le définir dans `deploy.local.mk`
+(non versionné, inclus automatiquement par le `Makefile`) ou le passer en
+ligne de commande. `PI_USER` (`admin`) et `PI_DIR` (`~/abribusdisplay`) ont
+des valeurs par défaut, surchargeables de la même façon.
 
 **Option build direct sur le Pi** (plus simple, mais consomme plus d'espace
 disque pour le cache de build) :
@@ -242,6 +334,7 @@ Raccourcis pour les commandes ci-dessus (`make help` liste les cibles) :
 | `make venv-dev` | `venv` + outils de qualité (`requirements-dev.txt` : ruff, mypy) |
 | `make run` | `python -m src.main` (nécessite `venv` + `.env`) |
 | `make render-test` | Régénère des aperçus dans `output/` depuis les JSON de `tests/` (vérif visuelle de `renderer.py`, voir `tests/README.md`) |
+| `make demo-gif` | Régénère `docs/demo.gif` (aperçu animé en haut de ce README) depuis `docs/demo.json` |
 | `make lint` | `ruff check .` (nécessite `venv-dev`) |
 | `make format` | `ruff format .` (reformate, nécessite `venv-dev`) |
 | `make format-check` | `ruff format --check .` (vérifie sans modifier, nécessite `venv-dev`) |
@@ -269,7 +362,7 @@ n'est utilisé :
 
 ```bash
 make venv-dev    # installe ruff + mypy dans .venv (une fois)
-make check       # lint + format-check + typecheck, comme en CI
+make check       # lint + format-check + typecheck
 make format      # reformate le code si besoin
 ```
 
@@ -295,11 +388,16 @@ AbribusDisplay/
 ├── tests/                 # paires <nom>.json / <nom>.png de référence pour le rendu
 │   ├── render_example.py  # régénère des aperçus dans output/ (voir tests/README.md)
 │   └── README.md
+├── docs/
+│   ├── demo.json          # données de l'aperçu animé du README
+│   ├── demo.gif           # aperçu animé (généré, voir `make demo-gif`)
+│   └── make_demo_gif.py   # génère demo.gif avec le rendu réel
 ├── output/                # images générées (volume monté), jamais versionné
 ├── debug.html             # prévisualisation navigateur de output/display.png (mode file)
 ├── .env                   # versionné, valeurs par défaut (voir Configuration) — ne pas modifier
 ├── .env.local             # non versionné, surcharges dev/prod (TOKEN, API_URL, etc.)
 ├── .env.pi.local.example  # modèle de .env.pi.local (poussé sur le Pi en .env.local par `make deploy`)
+├── deploy.local.mk.example  # modèle de deploy.local.mk (non versionné, PI_HOST pour `make deploy`)
 ├── Dockerfile
 ├── docker-compose.yml            # base, pensé pour le Pi (fbi + /dev/fb1)
 ├── docker-compose.override.yml   # auto-chargé en dev (mode file, pas de fb)
