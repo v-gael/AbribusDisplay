@@ -99,7 +99,8 @@ make venv-dev   # une fois, installe ruff + mypy dans .venv
 make check      # lint + format-check + typecheck
 ```
 
-Pas de CI pour l'instant : `make check` est à lancer manuellement avant de
+CI : GitHub Actions (`.github/workflows/check.yml`) lance `make check` sous
+Python 3.11 à chaque push. Le lancer quand même en local avant de
 committer. Si tu ajoutes un autre outil, documente-le ici et dans le
 README plutôt que de supposer son existence.
 
@@ -109,6 +110,8 @@ README plutôt que de supposer son existence.
   résultat en générant une image (voir snippet ci-dessous) avant de
   conclure — les problèmes de mise en page (chevauchement de texte, colonnes
   trop étroites) ne se voient qu'à l'image, pas à la lecture du code.
+  Si le changement est visible, relancer `make demo-gif` pour mettre à jour
+  l'aperçu animé du README (`docs/demo.gif`).
 - **Nouvelle variable de config** : l'ajouter dans `Settings` (`src/config.py`),
   dans le tableau du `README.md`, et dans `.env` avec sa valeur par défaut
   (`.env` est versionné, c'est lui l'exemple à maintenir). Ne pas mettre de
@@ -129,8 +132,9 @@ README plutôt que de supposer son existence.
   variable officielle — ne pas la remplacer par le fichier variable brut
   (`RobotoCondensed[wght].ttf`), le renderer ne pilote pas les axes de
   variation. Ne pas la retélécharger ni la modifier sans raison.
-- Il n'y a pas de tests automatisés ni de CI pour l'instant — ne pas
-  inventer de commande `pytest` ou de pipeline qui n'existe pas.
+- Il n'y a pas de tests automatisés pour l'instant, et la CI ne fait que
+  `make check` — ne pas inventer de commande `pytest` ou d'étape de
+  pipeline qui n'existe pas.
 
 ## Tester une modification du rendu
 

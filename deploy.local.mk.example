@@ -1,0 +1,8 @@
+# Modèle pour deploy.local.mk (non versionné, à créer une seule fois :
+# `cp deploy.local.mk.example deploy.local.mk` puis compléter). Inclus
+# automatiquement par le Makefile : évite de repasser PI_HOST à chaque
+# `make deploy`.
+
+PI_HOST = <IP_DU_PI>
+# PI_USER = admin
+# PI_DIR  = ~/abribusdisplay

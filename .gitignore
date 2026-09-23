@@ -8,6 +8,8 @@ __pycache__/
 .env.local
 # Surcharges du déploiement Pi (poussées par `make deploy`, voir README)
 .env.pi.local
+# Connexion au Pi pour `make deploy` (PI_HOST...), voir deploy.local.mk.example
+deploy.local.mk
 
 # IDE
 .idea/
