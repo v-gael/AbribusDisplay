@@ -1,7 +1,8 @@
 # AGENTS.md
 
 Contexte pour tout agent de codage (Claude Code, Codex, etc.) travaillant sur
-ce projet. Voir `README.md` pour la doc utilisateur complète.
+ce projet. Voir `README.md` (présentation courte) et `docs/guide.md`
+(documentation technique complète, contrat d'API dans `docs/api.md`).
 
 ## Le projet en une phrase
 
@@ -63,7 +64,7 @@ sinon les éléments seront sautés.
   poussé à chaque déploiement.
 - `make deploy` build l'image sur le Mac et la transfère au Pi par SSH (pas
   de build sur le Pi). `setup-ecran-pi.sh` prépare un Pi neuf (écran SPI,
-  Docker), une seule fois, voir README "Préparer le Pi".
+  Docker), une seule fois, voir `docs/guide.md` "Préparer le Pi".
 - `docker-compose.override.yml` est **auto-chargé** par `docker compose up`
   et force le mode dev (`DISPLAY_MODE=file`, pas de device framebuffer). Ne
   pas déployer ce fichier sur le Pi.
@@ -75,7 +76,7 @@ sinon les éléments seront sautés.
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # .env est versionné (valeurs par défaut), ne pas y toucher : créer .env.local
-# pour renseigner TOKEN, API_URL, etc. (surcharges), voir README
+# pour renseigner TOKEN, API_URL, etc. (surcharges), voir docs/guide.md
 python -m src.main
 
 # Dev avec Docker (mode fichier, override auto-chargé)
@@ -83,7 +84,7 @@ docker compose up --build
 
 # Build/déploiement Pi (ne pas utiliser docker-compose.override.yml sur le Pi)
 docker compose -f docker-compose.yml up -d --build
-# ou, recommandé : build sur le Mac puis transfert (voir README)
+# ou, recommandé : build sur le Mac puis transfert (voir docs/guide.md)
 make deploy
 
 # Aperçus du rendu depuis les JSON de tests/ (écrit dans output/)
@@ -102,7 +103,7 @@ make check      # lint + format-check + typecheck
 CI : GitHub Actions (`.github/workflows/check.yml`) lance `make check` sous
 Python 3.11 à chaque push. Le lancer quand même en local avant de
 committer. Si tu ajoutes un autre outil, documente-le ici et dans le
-README plutôt que de supposer son existence.
+`docs/guide.md` plutôt que de supposer son existence.
 
 ## Comment aborder les tâches sur ce repo
 
@@ -111,9 +112,10 @@ README plutôt que de supposer son existence.
   conclure — les problèmes de mise en page (chevauchement de texte, colonnes
   trop étroites) ne se voient qu'à l'image, pas à la lecture du code.
   Si le changement est visible, relancer `make demo-gif` pour mettre à jour
-  l'aperçu animé du README (`docs/demo.gif`).
+  l'aperçu animé du README (`docs/demo.gif`) et l'image d'aperçu de lien
+  (`docs/social-preview.png`, à renvoyer ensuite à la main dans GitHub).
 - **Nouvelle variable de config** : l'ajouter dans `Settings` (`src/config.py`),
-  dans le tableau du `README.md`, et dans `.env` avec sa valeur par défaut
+  dans le tableau de `docs/guide.md`, et dans `.env` avec sa valeur par défaut
   (`.env` est versionné, c'est lui l'exemple à maintenir). Ne pas mettre de
   secret dedans (`TOKEN`, `API_URL`, ...) : ça reste réservé à `.env.local`
   (non versionné, jamais modifié dans `.env`).
@@ -139,7 +141,7 @@ README plutôt que de supposer son existence.
 ## Tester une modification du rendu
 
 Pas de suite de tests automatisés pour l'instant (voir "Pistes d'évolution"
-du README). Pour vérifier visuellement un changement dans `renderer.py` :
+de `docs/guide.md`). Pour vérifier visuellement un changement dans `renderer.py` :
 
 ```python
 from src.config import Settings
