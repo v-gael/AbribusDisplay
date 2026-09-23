@@ -7,6 +7,7 @@ services:
     network_mode: host    # localhost du conteneur = localhost de la VM Docker (Colima), pour joindre l'API en local avec le bon SNI TLS
     environment:
       - DISPLAY_MODE=file
-    volumes:
-      - ./output:/app/output
-      - ./.env.local:/app/.env.local:ro
+    # Pas de montage de .env.local ici : docker-compose.yml le charge déjà via
+    # env_file (required: false). Un montage en volume créerait un dossier
+    # vide .env.local/ sur l'hôte s'il n'existe pas, et, lu par config.py avec
+    # override=True, pourrait annuler le DISPLAY_MODE=file forcé ci-dessus.
