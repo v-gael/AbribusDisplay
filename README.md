@@ -381,6 +381,7 @@ committer évite un aller-retour.
 
 ```
 AbribusDisplay/
+├── .github/workflows/check.yml  # CI : `make check` sous Python 3.11
 ├── src/
 │   ├── main.py          # orchestration des 2 threads
 │   ├── config.py        # chargement .env / .env.local
@@ -411,6 +412,8 @@ AbribusDisplay/
 ├── docker-compose.override.yml   # auto-chargé en dev (mode file, pas de fb)
 ├── pyproject.toml         # config ruff + mypy (voir Qualité de code)
 ├── setup-ecran-pi.sh      # installation de l'écran SPI 3.5" (waveshare35a) sur le Pi, à lancer avec sudo
+├── LICENSE                # licence MIT
+├── SECURITY.md            # signalement de vulnérabilités
 ├── requirements.txt
 └── requirements-dev.txt   # outils de qualité (ruff, mypy), pas dans l'image Docker
 ```
@@ -420,6 +423,11 @@ AbribusDisplay/
 - Endpoint de healthcheck (petit serveur HTTP minimal) pour supervision.
 - Tests unitaires sur `renderer.py` (comparaison de pixels) et `models.py`.
 - Rotation/anti-burn-in si l'écran reste allumé 24/7.
+
+## Sécurité
+
+Pour signaler une vulnérabilité, voir [SECURITY.md](SECURITY.md) (signalement
+privé, pas d'issue publique).
 
 ## Licence
 
