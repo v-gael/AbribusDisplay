@@ -18,7 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ src/
 COPY assets/ assets/
 COPY .env .env
-# .env.local est copié seulement s'il existe (voir .dockerignore) — sinon il est monté en volume
+# .env.local n'est jamais copié dans l'image (exclu par .dockerignore) : ses
+# valeurs arrivent au runtime via `env_file` (docker-compose.yml), plus le
+# montage en volume de docker-compose.override.yml en dev.
 
 RUN mkdir -p /app/output
 

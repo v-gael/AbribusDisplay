@@ -1,15 +1,34 @@
 services:
   abribusdisplay:
     build: .
+    # Image chargée via `docker save | ssh ... docker load` depuis un build fait
+    # sur une autre machine (voir README) : tant qu'une image portant ce tag
+    # existe déjà localement, `docker compose up -d` (sans --build) l'utilise
+    # directement au lieu de builder sur le Pi.
+    image: abribusdisplay:latest
     container_name: AbribusDisplay
     restart: unless-stopped
+    # Empêche les logs du conteneur (stdout, en continu vu restart:
+    # unless-stopped) de grossir indéfiniment sur un disque contraint.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     env_file:
       - .env
-      # Décommenter si vous utilisez un .env.local sur le Pi (surcharges locales)
-      # - .env.local
+      # Surcharges propres à ce déploiement (DISPLAY_MODE=fbi, TOKEN, API_URL...)
+      # Fichier non versionné, à créer sur le Pi à côté de ce docker-compose.yml.
+      # required: false pour ne pas casser un environnement où il n'existe pas
+      # encore (premier clone, dev en mode file sans surcharge).
+      - path: .env.local
+        required: false
     devices:
       # Accès au framebuffer de l'écran (adapter fb1 si besoin)
       - "/dev/fb1:/dev/fb1"
+      # fbi est lancé avec -T 1 (src/display.py) : il lui faut aussi le VT
+      # correspondant, sinon il crashe juste après le démarrage (boucle de
+      # redémarrage sans jamais rien afficher).
+      - "/dev/tty1:/dev/tty1"
     volumes:
       - ./output:/app/output
-    # DISPLAY_MODE=fbi doit être défini dans .env pour ce profil
