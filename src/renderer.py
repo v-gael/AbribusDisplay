@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageDraw, ImageFont
 
+from . import __version__
 from .config import Settings
 from .state import AppState, Status
 
@@ -114,6 +115,30 @@ def _display_timezone(name: str) -> ZoneInfo:
 
 
 def render(state: AppState, settings: Settings, now: datetime | None = None) -> Image.Image:
+    image = _render_panel(state, settings, now)
+    _draw_version(image, settings)
+    return image
+
+
+def _draw_version(image: Image.Image, settings: Settings) -> None:
+    """Version de l'application, en tout petit dans le coin bas droit.
+
+    Dessinée après le panneau, quel que soit le cas affiché (tableau, vide,
+    erreur), pour savoir d'un coup d'œil quelle version tourne sur le Pi.
+    """
+    width, height = image.size
+    margin = int(height * 0.008)
+    draw = ImageDraw.Draw(image)
+    draw.text(
+        (width - margin, height - margin),
+        f"v{__version__}",
+        font=_get_font(int(height * 0.028)),
+        fill=settings.text_header_color,
+        anchor="rd",
+    )
+
+
+def _render_panel(state: AppState, settings: Settings, now: datetime | None) -> Image.Image:
     # datetime.now().astimezone() dépend du fuseau système : sur le conteneur
     # Docker (souvent en UTC par défaut), l'heure affichée serait fausse.
     # On force donc le fuseau configuré (DISPLAY_TIMEZONE) plutôt que de

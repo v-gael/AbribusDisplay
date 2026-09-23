@@ -63,6 +63,10 @@ du bandeau des en-têtes de colonnes dès que le **dernier** appel API a échou�
 (401 compris), même si des données valides précédentes sont encore affichées.
 Il disparaît au premier appel réussi.
 
+Dans tous les cas, la version de l'application (`__version__` dans
+`src/__init__.py`, ex. `v1.0.0`) est écrite en tout petit en bas à droite de
+l'image, pour savoir d'un coup d'œil quelle version tourne sur le Pi.
+
 La liste `displays` est parcourue en round-robin : toutes les `REFRESH_RATE`
 secondes, l'image régénérée passe à l'élément suivant, puis on reboucle au
 premier.
