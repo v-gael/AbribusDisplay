@@ -11,19 +11,19 @@ rythmes différents, autour d'un état partagé thread-safe :
 
 ```
                  CALL_RATE (ex: 60s)
-   ┌────────────────────────────────────────┐
-   │             Thread fetcher             │
-   │ appelle API_URL → parse JSON → AppState│
-   └────────────────────────────────────────┘
+   ┌─────────────────────────────────────────┐
+   │             Thread fetcher              │
+   │ appelle API_URL → parse JSON → AppState │
+   └─────────────────────────────────────────┘
                         │
                         ▼
                   AppState (Lock)
                         ▲
                         │
-   ┌────────────────────────────────────────┐
-   │              Thread renderer           │
-   │  lit AppState → Pillow → PNG → display │
-   └────────────────────────────────────────┘
+   ┌─────────────────────────────────────────┐
+   │              Thread renderer            │
+   │  lit AppState → Pillow → PNG → display  │
+   └─────────────────────────────────────────┘
                  REFRESH_RATE (ex: 5s)
 ```
 
@@ -38,7 +38,8 @@ rythmes différents, autour d'un état partagé thread-safe :
   `NextPassage`, avec calcul de l'écart en minutes par rapport à maintenant.
 - **`src/renderer.py`** : dessine l'image (Pillow) selon la maquette : bandeau
   du haut (arrêt + heure), bandeau des en-têtes de colonnes, puis soit le
-  tableau des lignes, soit un message centré (cas "vide" / "token invalide").
+  tableau des lignes, soit un message centré (cas "vide" / "token invalide" / "données
+  indisponibles").
 - **`src/display.py`** : abstraction de la sortie finale :
   - `FbiDisplay` (Pi) : lance `fbi` une seule fois en tâche de fond, puis lui
     envoie `SIGUSR1` à chaque nouvelle image pour qu'il recharge le fichier
@@ -48,13 +49,19 @@ rythmes différents, autour d'un état partagé thread-safe :
   propre sur `SIGINT`/`SIGTERM`, fait un premier appel synchrone au démarrage
   pour ne jamais afficher un écran vide au lancement.
 
-## Les 3 cas d'affichage
+## Les cas d'affichage
 
 | Cas | Déclencheur | Rendu |
 |---|---|---|
 | Classique | Réponse OK avec des `nextPassages` | Tableau comme sur la maquette |
 | Vide | `DisplayItem` sans `nextPassages` | Message centré "Pas de passage prévu actuellement" |
 | Token invalide | Réponse `401` (et jamais eu de données valides) | Message centré "Token invalide, vérifier la configuration" |
+| Erreur API | Autre erreur (réseau, HTTP, JSON) et jamais eu de données valides | Message centré "Données indisponibles" |
+
+En plus de ces cas, un pictogramme (`assets/no_signal.png`) s'affiche à droite
+du bandeau des en-têtes de colonnes dès que le **dernier** appel API a échoué
+(401 compris), même si des données valides précédentes sont encore affichées.
+Il disparaît au premier appel réussi.
 
 La liste `displays` est parcourue en round-robin : toutes les `REFRESH_RATE`
 secondes, l'image régénérée passe à l'élément suivant, puis on reboucle au
@@ -89,9 +96,9 @@ autre surcharge locale (dev ou prod) ; il est chargé en priorité par
 | `API_VERIFY_SSL` | Vérification du certificat TLS de `API_URL` (`false` en dev local avec certif auto-signé) |
 | `CALL_RATE` | Fréquence (s) d'appel de l'API |
 | `REFRESH_RATE` | Fréquence (s) de régénération de l'image |
+| `DISPLAY_TIMEZONE` | Fuseau horaire de l'heure affichée (IANA, ex: `Europe/Paris`) — indépendant du fuseau système, souvent UTC dans un conteneur Docker |
 | `IMAGE_WIDTH` / `IMAGE_HEIGHT` | Résolution de l'image générée (adapter à l'écran du Pi) |
-| `FONT_PATH` | Chemin vers la police Roboto Condensed Bold |
-| `ROWS_PER_SCREEN` | Nombre de lignes de référence pour la taille des polices/pastilles (voir "Les 3 cas d'affichage" ci-dessus) |
+| `ROWS_PER_SCREEN` | Nombre de lignes de référence pour la taille des polices/pastilles (voir "Les cas d'affichage" ci-dessus) |
 | `DISPLAY_MODE` | `fbi` (Pi) ou `file` (dev) |
 | `OUTPUT_PATH` | Chemin du PNG généré |
 | `FRAMEBUFFER_DEVICE` | Périphérique framebuffer cible (mode `fbi`) |
@@ -104,10 +111,7 @@ autre surcharge locale (dev ou prod) ; il est chargé en priorité par
 
 La police **Roboto Condensed Bold** est embarquée dans le dépôt sous
 `assets/fonts/` (voir `assets/fonts/README.md` pour la licence, SIL Open
-Font License 1.1). `FONT_PATH` pointe vers ce fichier par défaut. Si le fichier
-venait à manquer, le rendu bascule automatiquement sur la police par défaut
-de Pillow (avec un warning dans les logs), pour que le projet reste utilisable
-même sans la police.
+Font License 1.1).
 
 ## Lancer en développement (Mac/Linux, sans Pi)
 
@@ -138,18 +142,84 @@ pip install -r requirements.txt
 # créer .env.local si besoin de surcharges (TOKEN, API_URL...), voir tableau
 # ci-dessus — ne pas modifier .env
 python -m src.main
-# ou : make install && make run
+# ou : make run
 ```
 
 ## Déployer sur le Raspberry Pi
 
-Sur le Pi, ne pas embarquer `docker-compose.override.yml` (ou le
-supprimer/renommer), pour que `docker-compose.yml` seul s'applique :
+### Préparer le Pi
+
+À faire une seule fois, sur un Raspberry Pi OS neuf, avant le premier
+déploiement. `setup-ecran-pi.sh` configure l'écran SPI 3.5" (clone
+waveshare35a) et installe Docker :
 
 ```bash
-# ne pas modifier .env : mettre dans .env.local toutes les valeurs propres à
-# ce déploiement (DISPLAY_MODE=fbi, IMAGE_WIDTH/HEIGHT adaptés à l'écran,
-# API_URL, TOKEN, etc.)
+scp setup-ecran-pi.sh admin@192.168.1.131:~   # depuis le Mac
+ssh admin@192.168.1.131
+sudo ./setup-ecran-pi.sh
+```
+
+Le script demande la rotation de l'écran (`90` par défaut, valeur validée
+pour un écran monté à l'horizontale), sauvegarde `config.txt`
+(`config.txt.backup.<date>`), puis :
+
+- active le SPI et désactive `vc4-kms-v3d` (en conflit avec le driver fbtft) ;
+- télécharge l'overlay `waveshare35a.dtbo` et ajoute sa configuration dans
+  `config.txt` ;
+- désactive `getty@tty1`, sans quoi `fbi` ne peut pas prendre la main sur la
+  console ;
+- installe Docker (Engine + plugin compose) et ajoute l'utilisateur au groupe
+  `docker`.
+
+Il peut être relancé sans risque : les réglages déjà présents dans
+`config.txt` ne sont pas dupliqués (seul l'overlay est retéléchargé, et une
+nouvelle sauvegarde est créée à chaque exécution). Pour changer la rotation
+après coup, modifier à la main la ligne `dtoverlay=waveshare35a,rotate=XX`. Un
+redémarrage est nécessaire à la fin (le script propose de le faire). Pour
+vérifier ensuite que l'écran est bien détecté :
+
+```bash
+dmesg | grep -i ili9486    # contrôleur d'affichage
+dmesg | grep -i ads7846    # contrôleur tactile
+ls /dev/fb1                # framebuffer utilisé par l'app (FRAMEBUFFER_DEVICE)
+```
+
+### Déployer l'application
+
+Sur le Pi, ne pas embarquer `docker-compose.override.yml` (ou le
+supprimer/renommer), pour que `docker-compose.yml` seul s'applique.
+
+**Option recommandée si le Pi est limité en espace disque : build en local,
+transfert de l'image déjà construite.** Ça évite d'avoir besoin des outils de
+compilation (gcc, headers...) sur le Pi si un wheel précompilé n'est pas
+disponible pour Pillow, et ça évite l'accumulation de cache de build à
+chaque rebuild :
+
+```bash
+cp .env.pi.local.example .env.pi.local   # une seule fois, puis compléter
+# DISPLAY_MODE=fbi, TOKEN, API_URL, IMAGE_WIDTH/IMAGE_HEIGHT selon l'écran...
+
+make deploy PI_HOST=192.168.1.131 PI_USER=admin
+# build l'image en local (nécessite un Mac/hôte de même archi que le Pi,
+# ex. Apple Silicon -> Pi 64-bit, sinon voir docker buildx --platform),
+# la transfère par SSH (docker save | ssh ... docker load, sans fichier
+# tar intermédiaire), copie docker-compose.yml + .env sur le Pi, pousse
+# .env.pi.local en tant que .env.local sur le Pi (surcharges propres à ce
+# déploiement — jamais dans .env, versionné), puis `docker compose up -d`
+# + prune de l'ancienne image sur le Pi.
+```
+
+`.env.pi.local` est non versionné (secrets) : à créer une seule fois sur ton
+Mac, `make deploy` se charge de le pousser sur le Pi à chaque déploiement —
+pas besoin de s'y connecter en SSH pour ça.
+
+`PI_HOST`/`PI_USER`/`PI_DIR` ont des valeurs par défaut dans le `Makefile` à
+adapter à ton installation.
+
+**Option build direct sur le Pi** (plus simple, mais consomme plus d'espace
+disque pour le cache de build) :
+
+```bash
 docker compose up -d --build
 # ou : make pi
 ```
@@ -165,13 +235,42 @@ Raccourcis pour les commandes ci-dessus (`make help` liste les cibles) :
 | Cible | Équivalent |
 |---|---|
 | `make venv` | Crée `.venv` et installe `requirements.txt` |
-| `make install` | `venv` + vérifie que `.env` existe (versionné, présent après clone — voir Configuration) |
+| `make venv-dev` | `venv` + outils de qualité (`requirements-dev.txt` : ruff, mypy) |
 | `make run` | `python -m src.main` (nécessite `venv` + `.env`) |
 | `make render-test` | Régénère des aperçus dans `output/` depuis les JSON de `tests/` (vérif visuelle de `renderer.py`, voir `tests/README.md`) |
+| `make lint` | `ruff check .` (nécessite `venv-dev`) |
+| `make format` | `ruff format .` (reformate, nécessite `venv-dev`) |
+| `make format-check` | `ruff format --check .` (vérifie sans modifier, nécessite `venv-dev`) |
+| `make typecheck` | `mypy` (nécessite `venv-dev`) |
+| `make check` | `lint` + `format-check` + `typecheck` |
 | `make dev` | `docker compose up --build` (mode fichier, override auto-chargé) |
 | `make pi` | `docker compose -f docker-compose.yml up -d --build` |
 | `make down` | `docker compose down` |
-| `make clean` | Supprime `.venv` et les PNG générés dans `output/` |
+| `make ps` | `docker compose ps` (statut des conteneurs) |
+| `make logs` | `docker compose logs -f` (suit les logs du conteneur) |
+| `make shell` | `docker compose exec abribusdisplay sh` (debug dans le conteneur) |
+| `make outdated` | `pip list --outdated` (dépendances de `requirements*.txt` à mettre à jour) |
+| `make clean` | Supprime `.venv`, les caches `ruff`/`mypy` et les PNG générés dans `output/` |
+
+## Qualité de code
+
+Deux outils, configurés dans `pyproject.toml`, aucun autre linter/formatter
+n'est utilisé :
+
+- **[ruff](https://docs.astral.sh/ruff/)** : lint (`make lint`) et formatage
+  (`make format`) en un seul outil, règles pycodestyle/pyflakes/isort +
+  pyupgrade (modernisation de syntaxe) + bugbear/simplify.
+- **[mypy](https://mypy-lang.org/)** en mode `strict` (`make typecheck`) :
+  analyse statique des types sur `src/` et `tests/`.
+
+```bash
+make venv-dev    # installe ruff + mypy dans .venv (une fois)
+make check       # lint + format-check + typecheck, comme en CI
+make format      # reformate le code si besoin
+```
+
+Aucune CI n'exécute `make check` pour l'instant (voir "Pistes d'évolution") :
+à lancer manuellement avant de committer.
 
 ## Arborescence
 
@@ -187,7 +286,8 @@ AbribusDisplay/
 │   └── display.py        # pilotage fbi / écriture fichier
 ├── assets/
 │   ├── fonts/             # RobotoCondensed-Bold.ttf + licence (OFL 1.1)
-│   └── no_bus.png         # icône du cas "vide" (voir src/renderer.py)
+│   ├── no_bus.png         # icône du cas "vide" (voir src/renderer.py)
+│   └── no_signal.png      # pictogramme de souci d'accès à l'API (voir src/renderer.py)
 ├── tests/                 # paires <nom>.json / <nom>.png de référence pour le rendu
 │   ├── render_example.py  # régénère des aperçus dans output/ (voir tests/README.md)
 │   └── README.md
@@ -195,10 +295,14 @@ AbribusDisplay/
 ├── debug.html             # prévisualisation navigateur de output/display.png (mode file)
 ├── .env                   # versionné, valeurs par défaut (voir Configuration) — ne pas modifier
 ├── .env.local             # non versionné, surcharges dev/prod (TOKEN, API_URL, etc.)
+├── .env.pi.local.example  # modèle de .env.pi.local (poussé sur le Pi en .env.local par `make deploy`)
 ├── Dockerfile
 ├── docker-compose.yml            # base, pensé pour le Pi (fbi + /dev/fb1)
 ├── docker-compose.override.yml   # auto-chargé en dev (mode file, pas de fb)
-└── requirements.txt
+├── pyproject.toml         # config ruff + mypy (voir Qualité de code)
+├── setup-ecran-pi.sh      # installation de l'écran SPI 3.5" (waveshare35a) sur le Pi, à lancer avec sudo
+├── requirements.txt
+└── requirements-dev.txt   # outils de qualité (ruff, mypy), pas dans l'image Docker
 ```
 
 ## Pistes d'évolution
@@ -206,3 +310,4 @@ AbribusDisplay/
 - Endpoint de healthcheck (petit serveur HTTP minimal) pour supervision.
 - Tests unitaires sur `renderer.py` (comparaison de pixels) et `models.py`.
 - Rotation/anti-burn-in si l'écran reste allumé 24/7.
+- CI (GitHub Actions ou autre) pour lancer `make check` automatiquement.
