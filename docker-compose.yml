@@ -2,7 +2,7 @@ services:
   abribusdisplay:
     build: .
     # Image chargée via `docker save | ssh ... docker load` depuis un build fait
-    # sur une autre machine (voir README) : tant qu'une image portant ce tag
+    # sur une autre machine (voir docs/guide.md) : tant qu'une image portant ce tag
     # existe déjà localement, `docker compose up -d` (sans --build) l'utilise
     # directement au lieu de builder sur le Pi.
     image: abribusdisplay:latest
