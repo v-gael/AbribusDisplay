@@ -44,6 +44,9 @@ sinon les éléments seront sautés.
 
 ## Conventions
 
+- Version de l'application : `__version__` dans `src/__init__.py`, affichée en
+  bas à droite du panneau. La mettre à jour dans la branche `release/X.Y.Z`
+  (gitflow), pour qu'elle corresponde au tag `vX.Y.Z`.
 - Commentaires et docstrings en français.
 - Pas de couleur ni de dimension en dur dans `renderer.py` : tout passe par
   `Settings` (dataclass chargée depuis l'env).
