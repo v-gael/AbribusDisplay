@@ -41,9 +41,9 @@ dev: ## Dev avec Docker (mode fichier, docker-compose.override.yml auto-chargé)
 pi: ## Build/déploiement Pi (ignore docker-compose.override.yml) — build directement sur le Pi, coûteux en espace disque
 	docker compose -f docker-compose.yml up -d --build
 
-deploy: ## Build l'image en local (Mac arm64) et la déploie sur le Pi sans jamais builder là-bas (voir README)
+deploy: ## Build l'image en local (Mac arm64) et la déploie sur le Pi sans jamais builder là-bas (voir docs/guide.md)
 	[ -n "$(PI_HOST)" ] || { echo "Erreur: PI_HOST non défini — lancer \`make deploy PI_HOST=<IP_DU_PI>\` ou le définir dans deploy.local.mk (voir deploy.local.mk.example)."; exit 1; }
-	[ -f .env.pi.local ] || { echo "Erreur: .env.pi.local manquant (non versionné) — créer ce fichier avec les surcharges du déploiement Pi (DISPLAY_MODE=fbi, TOKEN, API_URL...), voir README."; exit 1; }
+	[ -f .env.pi.local ] || { echo "Erreur: .env.pi.local manquant (non versionné) — créer ce fichier avec les surcharges du déploiement Pi (DISPLAY_MODE=fbi, TOKEN, API_URL...), voir docs/guide.md."; exit 1; }
 	docker build -t abribusdisplay:latest .
 	ssh $(PI) 'mkdir -p $(PI_DIR)'
 	rsync -a docker-compose.yml .env $(PI):$(PI_DIR)/
@@ -67,8 +67,9 @@ shell: ## Ouvre un shell dans le conteneur en cours d'exécution (debug)
 render-test: venv ## Régénère les aperçus dans output/ depuis les JSON de tests/ (vérif visuelle du rendu, voir tests/README.md)
 	.venv/bin/python tests/render_example.py
 
-demo-gif: venv ## Régénère docs/demo.gif (aperçu animé du README) depuis docs/demo.json
+demo-gif: venv ## Régénère les visuels depuis docs/demo.json : docs/demo.gif (README) et docs/social-preview.png (aperçu de lien GitHub)
 	.venv/bin/python docs/make_demo_gif.py
+	.venv/bin/python docs/make_social_preview.py
 
 ## —— Qualité de code —————————————————————————————————————————————————————
 lint: venv-dev ## Vérifie le style/les erreurs courantes (ruff check)

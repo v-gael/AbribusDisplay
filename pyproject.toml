@@ -22,6 +22,7 @@ ignore = ["B024", "B027"]
 # script directement (voir tests/README.md), pas une vraie violation.
 "tests/render_example.py" = ["E402"]
 "docs/make_demo_gif.py" = ["E402"]
+"docs/make_social_preview.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.11"
