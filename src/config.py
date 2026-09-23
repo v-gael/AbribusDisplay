@@ -1,15 +1,15 @@
 """Chargement de la configuration depuis .env (versionné, valeurs par défaut)
 puis .env.local (non versionné, surcharge — TOKEN, API_URL, etc.)."""
+
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 
 from dotenv import load_dotenv
 
-RootColor = Tuple[int, int, int]
+RootColor = tuple[int, int, int]
 
 
 def _hex_to_rgb(value: str) -> RootColor:
@@ -47,10 +47,12 @@ class Settings:
     call_rate: int
     refresh_rate: int
 
+    # Fuseau horaire d'affichage
+    display_timezone: str
+
     # Rendu
     image_width: int
     image_height: int
-    font_path: str
     rows_per_screen: int
 
     # Affichage
@@ -59,7 +61,7 @@ class Settings:
     framebuffer_device: str
 
     @staticmethod
-    def load() -> "Settings":
+    def load() -> Settings:
         _load_env_files()
 
         def env(name: str, default: str | None = None) -> str:
@@ -81,9 +83,9 @@ class Settings:
             api_verify_ssl=env("API_VERIFY_SSL", "true").strip().lower() not in ("false", "0", "no"),
             call_rate=int(env("CALL_RATE", "60")),
             refresh_rate=int(env("REFRESH_RATE", "5")),
+            display_timezone=env("DISPLAY_TIMEZONE", "Europe/Paris"),
             image_width=int(env("IMAGE_WIDTH", "480")),
             image_height=int(env("IMAGE_HEIGHT", "320")),
-            font_path=env("FONT_PATH", "assets/fonts/RobotoCondensed-Bold.ttf"),
             rows_per_screen=int(env("ROWS_PER_SCREEN", "5")),
             display_mode=env("DISPLAY_MODE", "file").lower(),
             output_path=env("OUTPUT_PATH", "output/display.png"),

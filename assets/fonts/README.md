@@ -21,8 +21,6 @@ car `src/renderer.py` charge la police via `ImageFont.truetype()` sans
 piloter les axes de variation ; utiliser directement le fichier variable
 rendrait le texte en graisse Regular (400) au lieu de Bold.
 
-`FONT_PATH` (voir le tableau de configuration dans le `README.md` racine)
-pointe vers ce fichier par défaut. Si le
-fichier venait à manquer, `renderer.py` bascule automatiquement sur la police
-par défaut de Pillow (un warning est loggé) — le projet continue donc de
-fonctionner sans, mais le rendu ne correspondra pas exactement à la maquette.
+Le chemin vers ce fichier est en dur dans `src/renderer.py` (`_FONT_PATH`) :
+ce n'est pas une variable de configuration, il n'y a rien à définir pour
+changer la police utilisée.
