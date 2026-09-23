@@ -109,6 +109,8 @@ README plutôt que de supposer son existence.
   résultat en générant une image (voir snippet ci-dessous) avant de
   conclure — les problèmes de mise en page (chevauchement de texte, colonnes
   trop étroites) ne se voient qu'à l'image, pas à la lecture du code.
+  Si le changement est visible, relancer `make demo-gif` pour mettre à jour
+  l'aperçu animé du README (`docs/demo.gif`).
 - **Nouvelle variable de config** : l'ajouter dans `Settings` (`src/config.py`),
   dans le tableau du `README.md`, et dans `.env` avec sa valeur par défaut
   (`.env` est versionné, c'est lui l'exemple à maintenir). Ne pas mettre de
