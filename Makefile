@@ -1,11 +1,14 @@
 .DEFAULT_GOAL := help
-.PHONY: help venv venv-dev run render-test dev pi deploy down ps logs shell \
+.PHONY: help venv venv-dev run render-test demo-gif dev pi deploy down ps logs shell \
         clean lint format format-check typecheck check outdated
 
-# Connexion au Pi pour `make deploy` (surcharge possible en ligne de commande,
-# ex. `make deploy PI_HOST=192.168.1.42`)
+# Connexion au Pi pour `make deploy`. PI_HOST n'a pas de valeur par défaut
+# (propre à chaque installation) : le passer en ligne de commande
+# (`make deploy PI_HOST=<IP_DU_PI>`) ou le définir une fois pour toutes dans
+# deploy.local.mk (non versionné, modèle : deploy.local.mk.example).
+-include deploy.local.mk
 PI_USER ?= admin
-PI_HOST ?= 192.168.1.131
+PI_HOST ?=
 PI_DIR  ?= ~/abribusdisplay
 PI := $(PI_USER)@$(PI_HOST)
 
@@ -39,6 +42,7 @@ pi: ## Build/déploiement Pi (ignore docker-compose.override.yml) — build dire
 	docker compose -f docker-compose.yml up -d --build
 
 deploy: ## Build l'image en local (Mac arm64) et la déploie sur le Pi sans jamais builder là-bas (voir README)
+	[ -n "$(PI_HOST)" ] || { echo "Erreur: PI_HOST non défini — lancer \`make deploy PI_HOST=<IP_DU_PI>\` ou le définir dans deploy.local.mk (voir deploy.local.mk.example)."; exit 1; }
 	[ -f .env.pi.local ] || { echo "Erreur: .env.pi.local manquant (non versionné) — créer ce fichier avec les surcharges du déploiement Pi (DISPLAY_MODE=fbi, TOKEN, API_URL...), voir README."; exit 1; }
 	docker build -t abribusdisplay:latest .
 	ssh $(PI) 'mkdir -p $(PI_DIR)'
@@ -62,6 +66,9 @@ shell: ## Ouvre un shell dans le conteneur en cours d'exécution (debug)
 ## —— Rendu ————————————————————————————————————————————————————————————————
 render-test: venv ## Régénère les aperçus dans output/ depuis les JSON de tests/ (vérif visuelle du rendu, voir tests/README.md)
 	.venv/bin/python tests/render_example.py
+
+demo-gif: venv ## Régénère docs/demo.gif (aperçu animé du README) depuis docs/demo.json
+	.venv/bin/python docs/make_demo_gif.py
 
 ## —— Qualité de code —————————————————————————————————————————————————————
 lint: venv-dev ## Vérifie le style/les erreurs courantes (ruff check)
