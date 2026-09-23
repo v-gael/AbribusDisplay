@@ -1,9 +1,10 @@
 """Modèles de données correspondant au JSON renvoyé par l'API."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -14,13 +15,13 @@ def _parse_datetime(value: str) -> datetime:
 @dataclass(frozen=True)
 class NextPassage:
     route_short_name: str
-    route_color: Optional[str]  # hex sans '#', ex "F29400"
-    route_text_color: Optional[str]
+    route_color: str | None  # hex sans '#', ex "F29400"
+    route_text_color: str | None
     headsign: str
     expected_at: datetime
 
     @classmethod
-    def from_dict(cls, data: dict) -> "NextPassage":
+    def from_dict(cls, data: dict[str, Any]) -> NextPassage:
         return cls(
             route_short_name=data["routeShortName"],
             route_color=data.get("routeColor") or None,
@@ -29,8 +30,8 @@ class NextPassage:
             expected_at=_parse_datetime(data["expectedAt"]),
         )
 
-    def minutes_until(self, now: Optional[datetime] = None) -> int:
-        now = now or datetime.now(timezone.utc)
+    def minutes_until(self, now: datetime | None = None) -> int:
+        now = now or datetime.now(UTC)
         delta = self.expected_at - now
         minutes = int(delta.total_seconds() // 60)
         return max(minutes, 0)
@@ -40,10 +41,10 @@ class NextPassage:
 class DisplayItem:
     label: str
     quay_name: str
-    next_passages: List[NextPassage]
+    next_passages: list[NextPassage]
 
     @classmethod
-    def from_dict(cls, data: dict) -> "DisplayItem":
+    def from_dict(cls, data: dict[str, Any]) -> DisplayItem:
         return cls(
             label=data.get("label", ""),
             quay_name=data.get("quayName", ""),
@@ -58,10 +59,10 @@ class DisplayItem:
 @dataclass(frozen=True)
 class NextPassagesResponse:
     generated_at: datetime
-    displays: List[DisplayItem]
+    displays: list[DisplayItem]
 
     @classmethod
-    def from_dict(cls, data: dict) -> "NextPassagesResponse":
+    def from_dict(cls, data: dict[str, Any]) -> NextPassagesResponse:
         return cls(
             generated_at=_parse_datetime(data["generatedAt"]),
             displays=[DisplayItem.from_dict(d) for d in data.get("displays", [])],

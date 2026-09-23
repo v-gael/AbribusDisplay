@@ -1,11 +1,13 @@
 """Point d'entrée: démarre le thread de récupération des données et le thread de rendu."""
+
 from __future__ import annotations
 
 import logging
 import signal
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from types import FrameType
 
 from .api_client import ApiError, InvalidTokenError, fetch_next_passages
 from .config import Settings
@@ -25,7 +27,7 @@ def _fetch_loop(settings: Settings, state: AppState) -> None:
             response = fetch_next_passages(
                 settings.api_url, settings.token, verify_ssl=settings.api_verify_ssl
             )
-            state.set_ok(response.displays, datetime.now(timezone.utc))
+            state.set_ok(response.displays, datetime.now(UTC))
             logger.info("Données mises à jour (%d affichage(s))", len(response.displays))
         except InvalidTokenError:
             logger.error("Token invalide (401)")
@@ -49,7 +51,7 @@ def _render_loop(settings: Settings, state: AppState) -> None:
         display.stop()
 
 
-def _handle_signal(signum, frame) -> None:  # noqa: ANN001
+def _handle_signal(signum: int, frame: FrameType | None) -> None:
     logger.info("Signal %s reçu, arrêt en cours...", signum)
     _stop_event.set()
 
@@ -62,14 +64,14 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _handle_signal)
 
     fetch_thread = threading.Thread(target=_fetch_loop, args=(settings, state), name="fetcher", daemon=True)
-    render_thread = threading.Thread(target=_render_loop, args=(settings, state), name="renderer", daemon=True)
+    render_thread = threading.Thread(
+        target=_render_loop, args=(settings, state), name="renderer", daemon=True
+    )
 
     # Premier fetch synchrone pour ne pas afficher un écran vide au démarrage
     try:
-        response = fetch_next_passages(
-            settings.api_url, settings.token, verify_ssl=settings.api_verify_ssl
-        )
-        state.set_ok(response.displays, datetime.now(timezone.utc))
+        response = fetch_next_passages(settings.api_url, settings.token, verify_ssl=settings.api_verify_ssl)
+        state.set_ok(response.displays, datetime.now(UTC))
     except InvalidTokenError:
         state.set_error(Status.INVALID_TOKEN)
     except ApiError as exc:

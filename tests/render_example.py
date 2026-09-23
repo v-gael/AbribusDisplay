@@ -6,11 +6,12 @@ résultat obtenu (output/<nom>.png) à l'image de référence du même nom dans
 tests/ (voir tests/README.md). N'écrit jamais dans tests/, uniquement dans
 output/.
 """
+
 from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,11 +28,16 @@ OUTPUT_DIR = ROOT / "output"
 
 def render_one(json_path: Path, settings: Settings) -> Path:
     data = json.loads(json_path.read_text())
+    response = NextPassagesResponse.from_dict(data)
     state = AppState()
-    state.set_ok(NextPassagesResponse.from_dict(data).displays, datetime.now(timezone.utc))
+    state.set_ok(response.displays, datetime.now(UTC))
 
+    # On rend l'image à la date "generatedAt" du fixture (et non à l'heure
+    # réelle) : les "expectedAt" sont écrits en dur en relatif à cette date
+    # (ex: +4 min), donc le rendu reste stable indéfiniment sans dépendre de
+    # la date à laquelle ce script est exécuté.
     output_path = OUTPUT_DIR / f"{json_path.stem}.png"
-    save_image(render(state, settings), str(output_path))
+    save_image(render(state, settings, now=response.generated_at), str(output_path))
     return output_path
 
 
