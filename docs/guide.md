@@ -312,6 +312,7 @@ AbribusDisplay/
 │   ├── demo.json          # données de l'aperçu animé du README
 │   ├── demo.gif           # aperçu animé (généré, voir `make demo-gif`)
 │   ├── make_demo_gif.py   # génère demo.gif avec le rendu réel
+│   ├── afficheur-en-situation.jpg  # photo de l'afficheur en situation (README)
 │   ├── social-preview.png # aperçu de lien GitHub 1280×640 (généré, voir `make demo-gif`)
 │   └── make_social_preview.py  # génère social-preview.png
 ├── output/                # images générées (volume monté), jamais versionné
