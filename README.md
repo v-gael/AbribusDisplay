@@ -9,9 +9,10 @@ directement sur le framebuffer de l'écran, sans environnement graphique.
 
 <p align="center">
   <img src="docs/demo.gif" alt="Aperçu du panneau : deux arrêts avec leurs prochains passages, puis un arrêt sans passage prévu" width="480">
+  <img src="docs/afficheur-en-situation.jpg" alt="Photo de l'afficheur en situation : le panneau sur l'écran 3,5 pouces du Raspberry Pi" width="240">
 </p>
 
-<p align="center"><sub>Rendu réel, généré depuis <code>docs/demo.json</code> : le panneau passe d'un arrêt à l'autre.</sub></p>
+<p align="center"><sub>À gauche, le rendu généré depuis <code>docs/demo.json</code>, qui passe d'un arrêt à l'autre. À droite, l'afficheur en situation sur le Raspberry Pi.</sub></p>
 
 ## En bref
 
