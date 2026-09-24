@@ -12,6 +12,7 @@ données attendues : voir le [contrat d'API](api.md).
 - [Qualité de code](#qualité-de-code)
 - [Arborescence](#arborescence)
 - [Pistes d'évolution](#pistes-dévolution)
+- [Crédits](#crédits)
 
 ## Architecture
 
@@ -337,3 +338,18 @@ AbribusDisplay/
 - Endpoint de healthcheck (petit serveur HTTP minimal) pour supervision.
 - Tests unitaires sur `renderer.py` (comparaison de pixels) et `models.py`.
 - Rotation/anti-burn-in si l'écran reste allumé 24/7.
+
+## Crédits
+
+- **Police** : Roboto Condensed Bold, embarquée sous `assets/fonts/`, licence
+  SIL Open Font License 1.1 (voir `assets/fonts/README.md`).
+- **Icônes** : générées par IA pour ce projet, `assets/no_bus.png` avec
+  ChatGPT (OpenAI) et `assets/no_signal.png` avec Claude (Anthropic). Les
+  conditions d'utilisation des deux services cèdent à l'utilisateur les
+  droits sur les contenus générés : elles sont distribuées sous licence MIT
+  avec le code.
+- **Données d'exemple** : les noms d'arrêts, lignes et couleurs utilisés dans
+  `tests/*.json`, `docs/demo.json` et les images associées proviennent des
+  données ouvertes du réseau TCAT (Troyes Champagne Métropole), publiées sur
+  [transport.data.gouv.fr](https://transport.data.gouv.fr/datasets/donnees-tcat-troyes-champagne-metropole-1)
+  sous licence [ODbL](https://opendatacommons.org/licenses/odbl/1.0/).
