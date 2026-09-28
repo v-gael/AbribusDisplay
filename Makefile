@@ -96,4 +96,4 @@ clean: ## Supprime le virtualenv, les caches d'outils et l'image générée
 
 ## —— Aide —————————————————————————————————————————————————————————————————
 help: ## Affiche cette aide
-	@grep -E '(^[a-zA-Z0-9_-]+:.*?## .*$$)|(^## )' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; /^## / {printf "\n\033[1m%s\033[0m\n", substr($$0, 4)} /^[a-zA-Z0-9_-]+:/ {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+	@grep -hE '(^[a-zA-Z0-9_-]+:.*?## .*$$)|(^## )' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; /^## / {printf "\n\033[1m%s\033[0m\n", substr($$0, 4)} /^[a-zA-Z0-9_-]+:/ {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
